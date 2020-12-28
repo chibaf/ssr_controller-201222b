@@ -27,8 +27,10 @@ def main():
 
     rate = 115200   # 通信レート
     # pid 設定
-    pid = PID(0.3, 0.3, 0.002)
-    setTargetTemp(200)
+    pid1 = PID(0.3, 0.3, 0.002)
+    pid1.setTargetTemp(200)
+    pid2 = PID(0.3, 0.3, 0.002)
+    pid2.setTargetTemp(200)
 
     # 温度用キュー（現在：全て同じキューを使用）
     q_maxsize = 200
@@ -55,12 +57,12 @@ def main():
     # ここから Ctrl-C が押されるまで無限ループ
     try:
         while True:
-            # ここに処理を記載
+            # PIDとSSRのupdate
             time.sleep(1)
-            # 例
-            pid.update(self, feedback_value)
-            ssr_group_dict[0].set_target_temp(200)
-            ssr_group_dict[1].set_target_temp(200)
+            pid1.update(tc_queue_dict[0])
+            pid2.update(tc_queue_dict[1])
+            ssr_group_dict[0].set_target_temp(pid1.output)
+            ssr_group_dict[1].set_target_temp(pid2.output)
             # print(f"que_len: {q_tc_temp.qsize()}")
             pass
         

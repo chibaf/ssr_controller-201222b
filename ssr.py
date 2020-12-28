@@ -5,6 +5,9 @@ import time
 from threading import Thread
 import RPi.GPIO as GPIO
 
+import matplotlib.pyplot as plt #20201220
+import numpy as np #20201220
+
 """
     SSR制御クラス
 
@@ -14,10 +17,51 @@ import RPi.GPIO as GPIO
 
 """
 
+# PIDクラス
+class PID:
+    def __init__(self, P=0.2, I=0.0, D=0.0):
+        self.Kp = P
+        self.Ki = I
+        self.Kd = D
+        self.target_temp=0.
+        self.clear()
+
+    def clear(self):
+        self.SetPoint = 0.0
+        self.PTerm = 0.0
+        self.ITerm = 0.0
+        self.DTerm = 0.0
+        self.last_error = 0.0
+        self.delta_time = 0.1
+        # Windup Guard
+        self.int_error = 0.0
+        self.windup_guard = 20.0
+        self.output = 0.0
+
+    def update(self, feedback_value):
+        error = self.target_temp - feedback_value
+        delta_error = error - self.last_error  
+        self.PTerm = self.Kp * error  #PTermを計算
+        self.ITerm += error * self.delta_time  #ITermを計算
+
+        if (self.ITerm > self.windup_guard):  #ITermが大きくなりすぎたとき様
+            self.ITerm = self.windup_guard
+        if(self.ITerm < -self.windup_guard):
+           self.ITerm = -self.windup_guard
+           
+        self.DTerm = delta_error / self.delta_time  #DTermを計算
+        self.last_error = error
+        self.output = self.PTerm + (self.Ki * self.ITerm) + (self.Kd * self.DTerm)
+        
+    def setTargetTemp(self, targetTemp):
+        self.target_temp = target_temp
+#
+
+
 MAX_PWM_WIDTH = 10
 
 class SsrDriver(Thread):
-    def __init__(self, group, tc_queue_dict, target_temp=200):
+    def __init__(self, group, tc_queue_dict, target_temp=20):
         Thread.__init__(self)
         self.ssr_pins = group["ssr_pins"]
         print(f"init SSR PIN({self.ssr_pins})")
@@ -58,14 +102,10 @@ class SsrDriver(Thread):
                             list_tc_temp.append(float(self.tc_queue_dict[input_port[0]][input_port[1]].get()))
                     
                 # キューに入っている温度の平均
-                print("list_tc_temp",list_tc_temp)
                 tc_temp_avg = sum(list_tc_temp) / len(list_tc_temp)
 
-                # print(f"SSR({self.pin_num}) Tc: {tc_temp:.2f}")("
-                print("self.target_temp=",self.target_temp)
-                print("tc_temp_avg",tc_temp_avg)
+                print(f"SSR({self.pin_num}) Tc: {tc_temp:.2f}")
                 pwm_width = self.get_pwm_width(self.target_temp, tc_temp_avg)
-                print("pwm_width=",pwm_width)
                 self.set_pwm_width(pwm_width)
                 # time.sleep(1)
             except KeyboardInterrupt:
@@ -95,7 +135,7 @@ class SsrDriver(Thread):
             pwm_width = MAX_PWM_WIDTH
 
         # 温度差（将来のPID制御用）
-        self.d_temp = target_temp - tc_temp
+#        self.d_temp = target_temp - tc_temp
 
         return pwm_width
 
