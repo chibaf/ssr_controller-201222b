@@ -1,5 +1,6 @@
 import time
 from ssr import SsrDriver
+from ssr import PID
 from temp_reader import TempReader
 from threading import Event
 import sys
@@ -26,7 +27,7 @@ def main():
     print(config)
 
     rate = 115200   # 通信レート
-    # pid 設定
+    # PID 設定
     pid1 = PID(0.3, 0.3, 0.002)
     pid1.setTargetTemp(200)
     pid2 = PID(0.3, 0.3, 0.002)
